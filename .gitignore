@@ -1,5 +1,5 @@
-#enviorment variables
+# environment variables
 .env
 
-#virtual environment
+# virtual environment
 .venv
