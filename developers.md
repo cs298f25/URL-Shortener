@@ -1,6 +1,3 @@
 # Development Process
 
-We will have two separate development branches with the main branch being separate from both. 
-The two development branches will be named `morro` and `aydelotte`. All new features and updates 
-will be developed in their respective branches. Once a feature is complete and tested, it will be 
-merged into the `main` branch after review and approval.
+We will have separate branches for each new feature. Each feature branch will be created from the `main` branch. Developers will work on their assigned features in these branches. Once the feature is complete, it must be thoroughly tested locally. After testing, the feature branch will be submitted for a code review. Upon approval, the branch will be merged back into the `main` branch.
