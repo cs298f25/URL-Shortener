@@ -9,15 +9,12 @@ from threading import Lock
 app = Flask(__name__)
 CORS(app)
 
-# --- Data Setup ---
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 os.makedirs(DATA_DIR, exist_ok=True)
 JSON_PATH = os.path.join(DATA_DIR, "links.json")
 
-# --- Thread safety for writes ---
 lock = Lock()
 
-# --- Helper: Load and Save JSON ---
 def load_links():
     if not os.path.exists(JSON_PATH):
         return {}
@@ -32,10 +29,8 @@ def save_links(data):
         with open(JSON_PATH, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
 
-# --- Initialize in-memory cache ---
 links = load_links()
 
-# --- Helper: Generate short codes ---
 def generate_short_code(length=6):
     chars = string.ascii_letters + string.digits
     while True:
@@ -43,7 +38,6 @@ def generate_short_code(length=6):
         if code not in links:
             return code
 
-# --- Add a new link ---
 @app.route("/add", methods=["POST"])
 def add_link():
     data = request.get_json()
@@ -69,7 +63,6 @@ def add_link():
         "original_url": original_url
     }), 201
 
-# --- Delete a link ---
 @app.route("/delete", methods=["POST"])
 def delete_link():
     data = request.get_json()
@@ -86,12 +79,10 @@ def delete_link():
 
     return jsonify({"success": True, "message": "Link deleted successfully"}), 200
 
-# --- Get all links ---
 @app.route("/links", methods=["GET"])
 def get_links():
     return jsonify(links), 200
 
-# --- Get the original URL for a short code ---
 @app.route("/map", methods=["GET"])
 def get_mapping():
     short_code = request.args.get("code")
@@ -105,6 +96,5 @@ def get_mapping():
 
     return jsonify({"url": original_url}), 200
 
-# --- Main entry ---
 if __name__ == "__main__":
     app.run(debug=True, port=5000)

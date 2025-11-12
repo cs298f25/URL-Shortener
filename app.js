@@ -1,4 +1,4 @@
-const API_URL = 'http://localhost:5000';
+const API_URL = 'http://127.0.0.1:5000';
 
 function showMessage(message, isError = false) {
     const msgDiv = document.getElementById('message');
@@ -89,5 +89,4 @@ async function loadLinks() {
     }
 }
 
-// Load links on page load
 loadLinks();
