@@ -1,45 +1,21 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, redirect, render_template
+import utils
 from flask_cors import CORS
-import string
-import random
-import os
-import json
-from threading import Lock
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/*": {"origins": "*"}})
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
-os.makedirs(DATA_DIR, exist_ok=True)
-JSON_PATH = os.path.join(DATA_DIR, "links.json")
+links = utils.load_links()
 
-lock = Lock()
+@app.route("/")
+def index():
+    return render_template("index.html")
 
-def load_links():
-    if not os.path.exists(JSON_PATH):
-        return {}
-    with open(JSON_PATH, "r", encoding="utf-8") as f:
-        try:
-            return json.load(f)
-        except json.JSONDecodeError:
-            return {}
-
-def save_links(data):
-    with lock:
-        with open(JSON_PATH, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
-
-links = load_links()
-
-def generate_short_code(length=6):
-    chars = string.ascii_letters + string.digits
-    while True:
-        code = ''.join(random.choice(chars) for _ in range(length))
-        if code not in links:
-            return code
-
-@app.route("/add", methods=["POST"])
+@app.route("/add", methods=["POST", "OPTIONS"])
 def add_link():
+    if request.method == "OPTIONS":
+        return "", 200
+        
     data = request.get_json()
     original_url = data.get("url")
     custom_code = data.get("code")
@@ -52,10 +28,10 @@ def add_link():
             return jsonify({"error": "Short code already exists"}), 400
         short_code = custom_code
     else:
-        short_code = generate_short_code()
+        short_code = utils.generate_short_code()
 
     links[short_code] = original_url
-    save_links(links)
+    utils.save_links(links)
 
     return jsonify({
         "success": True,
@@ -63,8 +39,11 @@ def add_link():
         "original_url": original_url
     }), 201
 
-@app.route("/delete", methods=["POST"])
+@app.route("/delete", methods=["POST", "OPTIONS"])
 def delete_link():
+    if request.method == "OPTIONS":
+        return "", 200
+        
     data = request.get_json()
     short_code = data.get("code")
 
@@ -75,7 +54,7 @@ def delete_link():
         return jsonify({"error": "Short code not found"}), 404
 
     del links[short_code]
-    save_links(links)
+    utils.save_links(links)
 
     return jsonify({"success": True, "message": "Link deleted successfully"}), 200
 
@@ -96,5 +75,18 @@ def get_mapping():
 
     return jsonify({"url": original_url}), 200
 
+# Catch-all route MUST be last
+@app.route("/<path:short_code>", methods=["GET"])
+def redirect_short_code(short_code):
+    if '.' in short_code:
+        return jsonify({"error": "Not found"}), 404
+    links = utils.load_links()
+    original_url = links.get(short_code)
+    
+    if original_url:
+        return redirect(original_url, code=302)
+    else:
+        return jsonify({"error": "Short code not found"}), 404
+
 if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+    app.run(debug=True, port=80, host='0.0.0.0')

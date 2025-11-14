@@ -1,4 +1,4 @@
-const API_URL = 'http://127.0.0.1:5000';
+const API_URL = '';
 
 function showMessage(message, isError = false) {
     const msgDiv = document.getElementById('message');
@@ -17,7 +17,7 @@ async function addLink() {
     }
 
     try {
-        const response = await fetch(`${API_URL}/add`, {
+        const response = await fetch(`/add`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ url, code: code || undefined })
@@ -42,7 +42,7 @@ async function deleteLink(code) {
     if (!confirm(`Delete link "${code}"?`)) return;
 
     try {
-        const response = await fetch(`${API_URL}/delete`, {
+        const response = await fetch(`/delete`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ code })
@@ -63,7 +63,7 @@ async function deleteLink(code) {
 
 async function loadLinks() {
     try {
-        const response = await fetch(`${API_URL}/links`);
+        const response = await fetch(`/links`);
         const links = await response.json();
 
         const container = document.getElementById('links-container');
