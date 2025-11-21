@@ -2,4 +2,4 @@
 cd app
 python3 -m venv .venv
 ./.venv/bin/pip install -r requirements.txt
-sudo ./.venv/bin/python app.py
+./.venv/bin/gunicorn --bind 0.0.0.0:8000 app:app

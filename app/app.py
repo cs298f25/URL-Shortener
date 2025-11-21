@@ -75,18 +75,15 @@ def get_mapping():
 
     return jsonify({"url": original_url}), 200
 
-# Catch-all route MUST be last
 @app.route("/<path:short_code>", methods=["GET"])
 def redirect_short_code(short_code):
     if '.' in short_code:
         return jsonify({"error": "Not found"}), 404
-    links = utils.load_links()
-    original_url = links.get(short_code)
+
+    current_links = utils.load_links()
+    original_url = current_links.get(short_code)
     
     if original_url:
         return redirect(original_url, code=302)
     else:
         return jsonify({"error": "Short code not found"}), 404
-
-if __name__ == "__main__":
-    app.run(debug=True, port=80, host='0.0.0.0')
