@@ -5,8 +5,6 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
 
-links = utils.load_links()
-
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -24,14 +22,13 @@ def add_link():
         return jsonify({"error": "URL is required"}), 400
 
     if custom_code:
-        if custom_code in links:
+        if utils.link_exists(custom_code):
             return jsonify({"error": "Short code already exists"}), 400
         short_code = custom_code
     else:
         short_code = utils.generate_short_code()
 
-    links[short_code] = original_url
-    utils.save_links(links)
+    utils.save_link(short_code, original_url)
 
     return jsonify({
         "success": True,
@@ -50,17 +47,16 @@ def delete_link():
     if not short_code:
         return jsonify({"error": "Short code is required"}), 400
 
-    if short_code not in links:
+    if not utils.link_exists(short_code):
         return jsonify({"error": "Short code not found"}), 404
 
-    del links[short_code]
-    utils.save_links(links)
+    utils.remove_link(short_code)
 
     return jsonify({"success": True, "message": "Link deleted successfully"}), 200
 
 @app.route("/links", methods=["GET"])
 def get_links():
-    return jsonify(links), 200
+    return jsonify(utils.get_all_links()), 200
 
 @app.route("/map", methods=["GET"])
 def get_mapping():
@@ -69,7 +65,7 @@ def get_mapping():
     if not short_code:
         return jsonify({"error": "Short code is required"}), 400
 
-    original_url = links.get(short_code)
+    original_url = utils.get_link(short_code)
     if not original_url:
         return jsonify({"error": "Short code not found"}), 404
 
@@ -80,8 +76,7 @@ def redirect_short_code(short_code):
     if '.' in short_code:
         return jsonify({"error": "Not found"}), 404
 
-    current_links = utils.load_links()
-    original_url = current_links.get(short_code)
+    original_url = utils.get_link(short_code)
     
     if original_url:
         return redirect(original_url, code=302)
