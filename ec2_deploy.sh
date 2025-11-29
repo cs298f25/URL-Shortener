@@ -3,24 +3,44 @@ set -euo pipefail
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_DIR="${PROJECT_ROOT}/app"
-SERVICE_NAME="urlshortener-redis.service"
-SERVICE_PATH="/etc/systemd/system/${SERVICE_NAME}"
+FLASK_SERVICE="flask.service"
+FLASK_SERVICE_PATH="/etc/systemd/system/${FLASK_SERVICE}"
 
-# Ensure Redis is installed (Debian/Ubuntu)
-if ! command -v redis-server >/dev/null 2>&1; then
-  sudo apt-get update
-  sudo apt-get install -y redis-server
-fi
+echo "=== URL Shortener Deployment Script ==="
 
-# Deploy Redis systemd service
-sudo cp "${PROJECT_ROOT}/redis.service" "${SERVICE_PATH}"
+sudo yum install redis6 -y
+
+echo "Starting Redis6 service..."
 sudo systemctl daemon-reload
-sudo systemctl enable "${SERVICE_NAME}"
-sudo systemctl restart "${SERVICE_NAME}"
+sudo systemctl enable redis6
+sudo systemctl status redis6 --no-pager
 
+# Set up Python virtual environment
+echo "Setting up Python virtual environment..."
 cd "${APP_DIR}"
-python3 -m venv .venv
+if [ ! -d ".venv" ]; then
+    python3 -m venv .venv
+fi
+./.venv/bin/pip install --upgrade pip
 ./.venv/bin/pip install -r requirements.txt
 
-# Run gunicorn via sudo so it can bind to privileged port 80
-sudo ./.venv/bin/gunicorn --bind 0.0.0.0:80 app:app
+# Deploy Flask systemd service
+echo "Deploying Flask service..."
+sudo cp "${PROJECT_ROOT}/${FLASK_SERVICE}" "${FLASK_SERVICE_PATH}"
+sudo systemctl daemon-reload
+sudo systemctl enable flask
+sudo systemctl restart flask
+
+# Show service status
+echo "=== Service Status ==="
+sudo systemctl status redis6 --no-pager
+sudo systemctl status flask --no-pager
+
+echo ""
+echo "=== Deployment Complete ==="
+echo ""
+echo "Useful commands:"
+echo "  Check Flask logs: sudo journalctl -u flask -f"
+echo "  Check Redis logs: sudo journalctl -u redis6 -f"
+echo "  Restart Flask: sudo systemctl restart flask"
+echo "  Restart Redis: sudo systemctl restart redis6"
