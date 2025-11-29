@@ -1,0 +1,14 @@
+[Unit]
+Description=URL Shortener Flask Application
+After=network-online.target redis.service
+Wants=network-online.target
+
+[Service]
+User=ec2-user
+Group=ec2-user
+WorkingDirectory=/home/ec2-user/URL-Shortener/app
+ExecStart=/home/ec2-user/URL-Shortener/app/.venv/bin/gunicorn --bind 0.0.0.0:80 app:app
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
