@@ -1,5 +1,7 @@
 const API_URL = '';
 
+let currentUser = null;
+
 function showMessage(message, isError = false) {
     const msgDiv = document.getElementById('message');
     msgDiv.className = isError ? 'alert alert-error' : 'alert alert-success';
@@ -7,9 +9,96 @@ function showMessage(message, isError = false) {
     setTimeout(() => msgDiv.innerHTML = '', 3000);
 }
 
+function formatTimestamp(timestamp) {
+    if (!timestamp) return 'Never';
+    const date = new Date(parseInt(timestamp) * 1000);
+    return date.toLocaleString();
+}
+
+function formatTimeRemaining(expiresAt) {
+    if (!expiresAt) return 'Never expires';
+    
+    const now = Math.floor(Date.now() / 1000);
+    const expires = parseInt(expiresAt);
+    const secondsRemaining = expires - now;
+    
+    if (secondsRemaining <= 0) return 'Expired';
+    
+    const days = Math.floor(secondsRemaining / (24 * 60 * 60));
+    const hours = Math.floor((secondsRemaining % (24 * 60 * 60)) / (60 * 60));
+    const minutes = Math.floor((secondsRemaining % (60 * 60)) / 60);
+    
+    if (days > 0) {
+        return `Expires in ${days} day${days > 1 ? 's' : ''}`;
+    } else if (hours > 0) {
+        return `Expires in ${hours} hour${hours > 1 ? 's' : ''}`;
+    } else if (minutes > 0) {
+        return `Expires in ${minutes} minute${minutes > 1 ? 's' : ''}`;
+    } else {
+        return 'Expires soon';
+    }
+}
+
+function isExpiringSoon(expiresAt) {
+    if (!expiresAt) return false;
+    const now = Math.floor(Date.now() / 1000);
+    const expires = parseInt(expiresAt);
+    const hoursRemaining = (expires - now) / (60 * 60);
+    return hoursRemaining > 0 && hoursRemaining < 24;
+}
+
+async function checkAuth() {
+    try {
+        const response = await fetch('/api/user', {
+            credentials: 'include'
+        });
+        
+        if (response.ok) {
+            currentUser = await response.json();
+            updateUserDisplay();
+            return true;
+        } else if (response.status === 401) {
+            window.location.href = '/login';
+            return false;
+        }
+    } catch (error) {
+        console.error('Auth check failed:', error);
+        window.location.href = '/login';
+        return false;
+    }
+}
+
+function updateUserDisplay() {
+    const userInfo = document.getElementById('user-info');
+    if (userInfo && currentUser) {
+        userInfo.innerHTML = `
+            <span>Logged in as: <strong>${currentUser.email}</strong></span>
+            <button class="btn btn-secondary" onclick="logout()">Logout</button>
+        `;
+    }
+}
+
+async function logout() {
+    try {
+        const response = await fetch('/api/logout', {
+            method: 'POST',
+            credentials: 'include'
+        });
+        
+        if (response.ok) {
+            window.location.href = '/login';
+        } else {
+            showMessage('Failed to logout', true);
+        }
+    } catch (error) {
+        showMessage('Error logging out', true);
+    }
+}
+
 async function addLink() {
     const url = document.getElementById('url').value;
     const code = document.getElementById('code').value;
+    const expiresIn = document.getElementById('expires_in').value;
 
     if (!url) {
         showMessage('Please enter a URL', true);
@@ -17,10 +106,15 @@ async function addLink() {
     }
 
     try {
-        const response = await fetch(`/add`, {
+        const response = await fetch('/api/add', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ url, code: code || undefined })
+            credentials: 'include',
+            body: JSON.stringify({ 
+                url, 
+                code: code || undefined,
+                expires_in: expiresIn
+            })
         });
 
         const data = await response.json();
@@ -29,9 +123,14 @@ async function addLink() {
             showMessage(`Link shortened! Code: ${data.short_code}`);
             document.getElementById('url').value = '';
             document.getElementById('code').value = '';
+            document.getElementById('expires_in').value = 'never';
             loadLinks();
         } else {
-            showMessage(data.error, true);
+            if (response.status === 401) {
+                window.location.href = '/login';
+            } else {
+                showMessage(data.error, true);
+            }
         }
     } catch (error) {
         showMessage('Error connecting to server', true);
@@ -42,9 +141,10 @@ async function deleteLink(code) {
     if (!confirm(`Delete link "${code}"?`)) return;
 
     try {
-        const response = await fetch(`/delete`, {
+        const response = await fetch('/api/delete', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
+            credentials: 'include',
             body: JSON.stringify({ code })
         });
 
@@ -54,7 +154,11 @@ async function deleteLink(code) {
             showMessage('Link deleted successfully');
             loadLinks();
         } else {
-            showMessage(data.error, true);
+            if (response.status === 401) {
+                window.location.href = '/login';
+            } else {
+                showMessage(data.error, true);
+            }
         }
     } catch (error) {
         showMessage('Error connecting to server', true);
@@ -63,30 +167,66 @@ async function deleteLink(code) {
 
 async function loadLinks() {
     try {
-        const response = await fetch(`/links`);
+        const response = await fetch('/api/links', {
+            credentials: 'include'
+        });
+        
+        if (response.status === 401) {
+            window.location.href = '/login';
+            return;
+        }
+        
         const links = await response.json();
 
         const container = document.getElementById('links-container');
         
-        if (Object.keys(links).length === 0) {
+        if (links.length === 0) {
             container.innerHTML = '<div class="empty-state">No links yet. Create your first one!</div>';
             return;
         }
 
         container.innerHTML = '<div class="links-list">' +
-            Object.entries(links).map(([code, url]) => `
-                <div class="link-item">
+            links.map(link => {
+                const isExpired = link.is_expired;
+                const expiresSoon = isExpiringSoon(link.expires_at);
+                const expiredClass = isExpired ? 'expired' : '';
+                const soonClass = expiresSoon ? 'expiring-soon' : '';
+                
+                return `
+                <div class="link-item ${expiredClass} ${soonClass}">
                     <div class="link-info">
-                        <div class="short-code">${code}</div>
-                        <div class="original-url">${url}</div>
+                        <div class="link-header">
+                            <div class="short-code">${link.short_code}</div>
+                            ${isExpired ? '<span class="expired-badge">Expired</span>' : ''}
+                            ${expiresSoon && !isExpired ? '<span class="soon-badge">Expires Soon</span>' : ''}
+                        </div>
+                        <div class="original-url">${link.url}</div>
+                        <div class="link-meta">
+                            <div class="meta-item">
+                                <strong>Created:</strong> ${formatTimestamp(link.created_at)}
+                            </div>
+                            <div class="meta-item">
+                                <strong>Expires:</strong> ${link.expires_at ? formatTimestamp(link.expires_at) : 'Never'}
+                            </div>
+                            <div class="meta-item time-remaining">
+                                ${formatTimeRemaining(link.expires_at)}
+                            </div>
+                        </div>
                     </div>
-                    <button class="btn-delete" onclick="deleteLink('${code}')">Delete</button>
+                    <button class="btn-delete" onclick="deleteLink('${link.short_code}')">Delete</button>
                 </div>
-            `).join('') +
+            `;
+            }).join('') +
             '</div>';
     } catch (error) {
         showMessage('Error loading links', true);
     }
 }
 
-loadLinks();
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', async () => {
+    const authenticated = await checkAuth();
+    if (authenticated) {
+        loadLinks();
+    }
+});
