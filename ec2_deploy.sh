@@ -13,7 +13,6 @@ sudo yum install redis6 -y
 echo "Starting Redis6 service..."
 sudo systemctl daemon-reload
 sudo systemctl enable redis6
-sudo systemctl status redis6 --no-pager
 
 # Set up Python virtual environment
 echo "Setting up Python virtual environment..."
@@ -33,8 +32,6 @@ sudo systemctl restart flask
 
 # Show service status
 echo "=== Service Status ==="
-sudo systemctl status redis6 --no-pager
-sudo systemctl status flask --no-pager
 
 echo ""
 echo "=== Deployment Complete ==="
