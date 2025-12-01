@@ -2,6 +2,11 @@ const API_URL = '';
 
 let currentUser = null;
 
+/**
+ * Display a message to the user.
+ * @param {string} message - The message to display.
+ * @param {boolean} [isError=false] - Whether the message is an error.
+ */
 function showMessage(message, isError = false) {
     const msgDiv = document.getElementById('message');
     msgDiv.className = isError ? 'alert alert-error' : 'alert alert-success';
@@ -9,12 +14,22 @@ function showMessage(message, isError = false) {
     setTimeout(() => msgDiv.innerHTML = '', 3000);
 }
 
+/**
+ * Format a Unix timestamp to a readable date string.
+ * @param {string|number} timestamp - Unix timestamp in seconds.
+ * @returns {string} Formatted date string or 'Never' if timestamp is invalid.
+ */
 function formatTimestamp(timestamp) {
     if (!timestamp) return 'Never';
     const date = new Date(parseInt(timestamp) * 1000);
     return date.toLocaleString();
 }
 
+/**
+ * Format the time remaining until expiration.
+ * @param {string|number} expiresAt - Unix timestamp when link expires.
+ * @returns {string} Human-readable time remaining or 'Never expires' if no expiration.
+ */
 function formatTimeRemaining(expiresAt) {
     if (!expiresAt) return 'Never expires';
     
@@ -39,6 +54,11 @@ function formatTimeRemaining(expiresAt) {
     }
 }
 
+/**
+ * Check if a link is expiring within 24 hours.
+ * @param {string|number} expiresAt - Unix timestamp when link expires.
+ * @returns {boolean} True if expiring within 24 hours, false otherwise.
+ */
 function isExpiringSoon(expiresAt) {
     if (!expiresAt) return false;
     const now = Math.floor(Date.now() / 1000);
@@ -47,6 +67,10 @@ function isExpiringSoon(expiresAt) {
     return hoursRemaining > 0 && hoursRemaining < 24;
 }
 
+/**
+ * Check if the user is authenticated and update the UI.
+ * @returns {Promise<boolean>} True if authenticated, false otherwise.
+ */
 async function checkAuth() {
     try {
         const response = await fetch('/user', {
@@ -68,6 +92,9 @@ async function checkAuth() {
     }
 }
 
+/**
+ * Update the user display with current user information.
+ */
 function updateUserDisplay() {
     const userInfo = document.getElementById('user-info');
     if (userInfo && currentUser) {
@@ -78,6 +105,9 @@ function updateUserDisplay() {
     }
 }
 
+/**
+ * Log out the current user.
+ */
 async function logout() {
     try {
         const response = await fetch('/logout', {
@@ -95,6 +125,9 @@ async function logout() {
     }
 }
 
+/**
+ * Add a new shortened link.
+ */
 async function addLink() {
     const url = document.getElementById('url').value;
     const code = document.getElementById('code').value;
@@ -137,6 +170,10 @@ async function addLink() {
     }
 }
 
+/**
+ * Delete a shortened link.
+ * @param {string} code - The short code of the link to delete.
+ */
 async function deleteLink(code) {
     if (!confirm(`Delete link "${code}"?`)) return;
 
@@ -165,6 +202,9 @@ async function deleteLink(code) {
     }
 }
 
+/**
+ * Load and display all links for the current user.
+ */
 async function loadLinks() {
     try {
         const response = await fetch('/links', {
@@ -223,7 +263,6 @@ async function loadLinks() {
     }
 }
 
-// Initialize on page load
 document.addEventListener('DOMContentLoaded', async () => {
     const authenticated = await checkAuth();
     if (authenticated) {

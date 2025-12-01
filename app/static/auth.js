@@ -1,3 +1,8 @@
+/**
+ * Display a message to the user.
+ * @param {string} message - The message to display.
+ * @param {boolean} [isError=false] - Whether the message is an error.
+ */
 function showMessage(message, isError = false) {
     const msgDiv = document.getElementById('message');
     msgDiv.className = isError ? 'alert alert-error' : 'alert alert-success';
@@ -5,6 +10,9 @@ function showMessage(message, isError = false) {
     setTimeout(() => msgDiv.innerHTML = '', 5000);
 }
 
+/**
+ * Handle user signup.
+ */
 async function signup() {
     const email = document.getElementById('email').value.trim();
     const password = document.getElementById('password').value;
@@ -42,6 +50,9 @@ async function signup() {
     }
 }
 
+/**
+ * Handle user login.
+ */
 async function login() {
     const email = document.getElementById('email').value.trim();
     const password = document.getElementById('password').value;
@@ -74,7 +85,6 @@ async function login() {
     }
 }
 
-// Allow Enter key to submit forms
 document.addEventListener('DOMContentLoaded', () => {
     const emailInput = document.getElementById('email');
     const passwordInput = document.getElementById('password');
@@ -93,4 +103,3 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
-

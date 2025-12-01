@@ -15,8 +15,6 @@ import bcrypt
 import db
 
 
-# ==================== Protocol for Database Interface ====================
-
 class DatabaseInterface(Protocol):
     """Protocol defining the database interface for dependency injection."""
     
@@ -31,8 +29,6 @@ class DatabaseInterface(Protocol):
     def set_remove(self, key: str, *members: str) -> int: ...
     def set_members(self, key: str) -> set: ...
 
-
-# ==================== Helper Functions ====================
 
 def is_expired(expires_at: Optional[str]) -> bool:
     """Check if a timestamp has expired. Returns False if never expires."""
@@ -64,14 +60,11 @@ def parse_expires_in(expires_in: Optional[str]) -> Optional[int]:
             days = int(expires_in[:-1])
             return current_time + (days * 24 * 60 * 60)
         else:
-            # Try to parse as integer (seconds)
             seconds = int(expires_in)
             return current_time + seconds
     except (ValueError, AttributeError):
         return None
 
-
-# ==================== Authentication Service ====================
 
 class AuthService:
     """Service for user authentication and account management."""
@@ -91,18 +84,14 @@ class AuthService:
         """
         email_lower = email.lower().strip()
         
-        # Check if email already exists
         email_key = db.email_index_key(email_lower)
         if self.db.exists(email_key):
             return None
         
-        # Generate user_id
         user_id = str(uuid.uuid4())
         
-        # Hash password
         password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
         
-        # Store user account
         created_at = int(time.time())
         account_key = db.user_account_key(user_id)
         self.db.hash_set_mapping(account_key, {
@@ -112,7 +101,6 @@ class AuthService:
             "created_at": str(created_at)
         })
         
-        # Create email index
         self.db.set_value(email_key, user_id)
         
         return {
@@ -129,21 +117,18 @@ class AuthService:
         """
         email_lower = email.lower().strip()
         
-        # Get user_id from email index
         email_key = db.email_index_key(email_lower)
         user_id = self.db.get(email_key)
         
         if not user_id:
             return None
         
-        # Get user account
         account_key = db.user_account_key(user_id)
         user_data = self.db.hash_get_all(account_key)
         
         if not user_data:
             return None
         
-        # Verify password
         stored_hash = user_data.get("password_hash", "")
         if not stored_hash:
             return None
@@ -165,7 +150,6 @@ class AuthService:
         if not user_data:
             return None
         
-        # Don't return password hash
         user_data.pop("password_hash", None)
         return user_data
     
@@ -187,8 +171,6 @@ class AuthService:
         return self.db.exists(email_key)
 
 
-# ==================== Link Service ====================
-
 class LinkService:
     """Service for link management operations."""
     
@@ -209,7 +191,6 @@ class LinkService:
         if not keys:
             return False
         
-        # Check if any matching link is not expired
         for key in keys:
             link_data = self.db.hash_get_all(key)
             if link_data:
@@ -240,15 +221,12 @@ class LinkService:
         Returns dict with short_code, url, expires_at, created_at.
         Raises ValueError if custom_code already exists or validation fails.
         """
-        # Validate URL
         if not url or not url.strip():
             raise ValueError("URL is required")
         
-        # Parse expiration
         expires_at = parse_expires_in(expires_in)
         expires_at_str = str(expires_at) if expires_at else ""
         
-        # Generate or use custom code
         if custom_code:
             if self._link_exists(custom_code):
                 raise ValueError("Short code already exists")
@@ -256,7 +234,6 @@ class LinkService:
         else:
             short_code = self._generate_short_code()
         
-        # Save link to database
         created_at = int(time.time())
         link_key = db.link_key(user_id, short_code)
         self.db.hash_set_mapping(link_key, {
@@ -266,7 +243,6 @@ class LinkService:
             "user_id": user_id
         })
         
-        # Add to user's link set
         user_links_key = db.user_links_key(user_id)
         self.db.set_add(user_links_key, short_code)
         
@@ -283,21 +259,18 @@ class LinkService:
         Returns None if not found or expired.
         Returns dict with url, created_at, expires_at, user_id if found and not expired.
         """
-        # Search for link across all users
         pattern = f"{db.LINK_KEY_PREFIX}*:{short_code}"
         keys = self.db.list_keys(pattern)
         
         if not keys:
             return None
         
-        # Get the first matching link (should be unique if short_code is unique)
         key = keys[0]
         link_data = self.db.hash_get_all(key)
         
         if not link_data:
             return None
         
-        # Check if expired
         expires_at = link_data.get("expires_at", "")
         if is_expired(expires_at):
             return None
@@ -311,14 +284,11 @@ class LinkService:
         """
         link_key = db.link_key(user_id, short_code)
         
-        # Check if link exists and is owned by this user
         if not self.db.exists(link_key):
             return False
         
-        # Delete the link hash
         self.db.delete(link_key)
         
-        # Remove from user's link set
         user_links_key = db.user_links_key(user_id)
         self.db.set_remove(user_links_key, short_code)
         
@@ -359,7 +329,6 @@ class LinkService:
         if not keys:
             return None
         
-        # Get the first matching link
         key = keys[0]
         link_data = self.db.hash_get_all(key)
         

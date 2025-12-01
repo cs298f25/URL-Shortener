@@ -9,7 +9,6 @@ import redis
 
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
-# Redis key prefixes
 LINK_KEY_PREFIX = "link:"
 USER_LINKS_PREFIX = "user:"
 USER_ACCOUNT_PREFIX = "account:"
@@ -17,7 +16,6 @@ USER_EMAIL_INDEX_PREFIX = "email:"
 
 redis_client = redis.Redis.from_url(REDIS_URL, decode_responses=True)
 
-# ==================== Key Generation Helpers ====================
 
 def link_key(user_id: str, short_code: str) -> str:
     """Generate Redis key for a link hash."""
@@ -35,7 +33,6 @@ def email_index_key(email: str) -> str:
     """Generate Redis key for email to user_id mapping."""
     return f"{USER_EMAIL_INDEX_PREFIX}{email.lower()}"
 
-# ==================== Generic Redis Operations ====================
 
 def get(key: str) -> Optional[str]:
     """Get string value from Redis."""
@@ -57,7 +54,6 @@ def list_keys(pattern: str = "*") -> List[str]:
     """Get list of keys matching pattern."""
     return list(redis_client.scan_iter(match=pattern))
 
-# ==================== Hash Operations ====================
 
 def hash_get(key: str, field: str) -> Optional[str]:
     """Get field from hash."""
@@ -79,7 +75,6 @@ def hash_delete(key: str, *fields: str) -> int:
     """Delete fields from hash."""
     return redis_client.hdel(key, *fields)
 
-# ==================== Set Operations ====================
 
 def set_add(key: str, *members: str) -> int:
     """Add members to set. Returns number of members added."""
@@ -97,7 +92,6 @@ def set_contains(key: str, member: str) -> bool:
     """Check if set contains member."""
     return redis_client.sismember(key, member)
 
-# ==================== Multi-Get Operations ====================
 
 def multi_get(keys: List[str]) -> List[Optional[str]]:
     """Get multiple keys at once."""

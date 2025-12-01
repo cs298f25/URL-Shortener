@@ -16,8 +16,6 @@ auth_service = AuthService()
 link_service = LinkService()
 
 
-# ==================== Authentication Decorator ====================
-
 def login_required(f):
     """Decorator to require authentication for routes."""
     @wraps(f)
@@ -31,8 +29,6 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-
-# ==================== Page Routes ====================
 
 @app.route("/")
 def index():
@@ -57,8 +53,6 @@ def login():
         return redirect(url_for('index'))
     return render_template("login.html")
 
-
-# ==================== Authentication API Routes ====================
 
 @app.route("/signup", methods=["POST", "OPTIONS"])
 def signup():
@@ -161,8 +155,6 @@ def get_user():
         return jsonify({"error": "Failed to retrieve user"}), 500
 
 
-# ==================== Link API Routes ====================
-
 @app.route("/add", methods=["POST", "OPTIONS"])
 @login_required
 def add_link():
@@ -250,8 +242,6 @@ def get_links():
     except Exception as e:
         return jsonify({"error": "Failed to retrieve links"}), 500
 
-
-# ==================== Public Redirect Route ====================
 
 @app.route("/<path:short_code>", methods=["GET"])
 def redirect_short_code(short_code):

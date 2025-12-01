@@ -46,6 +46,15 @@ def list_keys(pattern: str = "*") -> List[str]:
 
 
 def is_link_expired(link_data: Dict[str, str]) -> bool:
+    """
+    Check if a link has expired based on its expires_at timestamp.
+    
+    Args:
+        link_data: Dictionary containing link data with 'expires_at' field.
+        
+    Returns:
+        True if link is expired, False if not expired or never expires.
+    """
     expires_at = link_data.get("expires_at", "")
     if not expires_at or expires_at == "":
         return False
@@ -117,6 +126,15 @@ def remove_link(user_id: str, short_code: str) -> int:
 
 
 def link_exists(short_code: str) -> bool:
+    """
+    Check if a short code exists and is not expired.
+    
+    Args:
+        short_code: The short code to check.
+        
+    Returns:
+        True if link exists and is not expired, False otherwise.
+    """
     pattern = f"{LINK_KEY_PREFIX}*:{short_code}"
     keys = list_keys(pattern)
     
@@ -176,6 +194,10 @@ def get_link_owner(short_code: str) -> Optional[str]:
 
 def cleanup_expired_links() -> int:
     """
+    Remove expired links from user link sets.
+    
+    Returns:
+        Number of expired links cleaned up.
     """
     pattern = f"{LINK_KEY_PREFIX}*"
     keys = list_keys(pattern)
@@ -204,8 +226,6 @@ def generate_short_code(length: int = 6) -> str:
         if not link_exists(code):
             return code
 
-
-# ==================== Authentication Functions ====================
 
 def _user_account_key(user_id: str) -> str:
     """Generate Redis key for user account hash."""
@@ -242,7 +262,6 @@ def create_user(email: str, password: str) -> Optional[Dict[str, str]]:
         "created_at": str(created_at)
     })
     
-    # Create email index
     redis_client.set(email_key, user_id)
     
     return {
