@@ -25,7 +25,7 @@ def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
-            if request.is_json or request.path.startswith('/api/'):
+            if request.is_json or request.path.startswith('/'):
                 return jsonify({"error": "Authentication required"}), 401
             return redirect(url_for('login'))
         return f(*args, **kwargs)
@@ -60,7 +60,7 @@ def login():
 
 # ==================== Authentication API Routes ====================
 
-@app.route("/api/signup", methods=["POST", "OPTIONS"])
+@app.route("/signup", methods=["POST", "OPTIONS"])
 def signup():
     """Handle user registration."""
     if request.method == "OPTIONS":
@@ -104,7 +104,7 @@ def signup():
         return jsonify({"error": "Failed to create account"}), 500
 
 
-@app.route("/api/login", methods=["POST", "OPTIONS"])
+@app.route("/login", methods=["POST", "OPTIONS"])
 def login_api():
     """Handle user login."""
     if request.method == "OPTIONS":
@@ -137,8 +137,7 @@ def login_api():
         }
     }), 200
 
-
-@app.route("/api/logout", methods=["POST", "OPTIONS"])
+@app.route("/logout", methods=["POST", "OPTIONS"])
 @login_required
 def logout():
     """Handle user logout."""
@@ -149,7 +148,7 @@ def logout():
     return jsonify({"success": True, "message": "Logged out successfully"}), 200
 
 
-@app.route("/api/user", methods=["GET"])
+@app.route("/user", methods=["GET"])
 @login_required
 def get_user():
     """Get current user info."""
@@ -170,7 +169,7 @@ def get_user():
 
 # ==================== Link API Routes ====================
 
-@app.route("/api/add", methods=["POST", "OPTIONS"])
+@app.route("/add", methods=["POST", "OPTIONS"])
 @login_required
 def add_link():
     """Add a new shortened link."""
@@ -204,7 +203,7 @@ def add_link():
         return jsonify({"error": "Failed to create link"}), 500
 
 
-@app.route("/api/delete", methods=["POST", "OPTIONS"])
+@app.route("/delete", methods=["POST", "OPTIONS"])
 @login_required
 def delete_link():
     """Delete a shortened link."""
@@ -239,7 +238,7 @@ def delete_link():
         return jsonify({"error": "Failed to delete link"}), 500
 
 
-@app.route("/api/links", methods=["GET"])
+@app.route("/links", methods=["GET"])
 @login_required
 def get_links():
     """Get all links for the current user."""
