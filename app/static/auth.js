@@ -20,7 +20,7 @@ async function signup() {
     }
 
     try {
-        const response = await fetch('/api/signup', {
+        const response = await fetch('/signup', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             credentials: 'include',
@@ -52,7 +52,7 @@ async function login() {
     }
 
     try {
-        const response = await fetch('/api/login', {
+        const response = await fetch('/login', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             credentials: 'include',

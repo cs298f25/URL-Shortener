@@ -49,7 +49,7 @@ function isExpiringSoon(expiresAt) {
 
 async function checkAuth() {
     try {
-        const response = await fetch('/api/user', {
+        const response = await fetch('/user', {
             credentials: 'include'
         });
         
@@ -80,7 +80,7 @@ function updateUserDisplay() {
 
 async function logout() {
     try {
-        const response = await fetch('/api/logout', {
+        const response = await fetch('/logout', {
             method: 'POST',
             credentials: 'include'
         });
@@ -106,7 +106,7 @@ async function addLink() {
     }
 
     try {
-        const response = await fetch('/api/add', {
+        const response = await fetch('/add', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             credentials: 'include',
@@ -141,7 +141,7 @@ async function deleteLink(code) {
     if (!confirm(`Delete link "${code}"?`)) return;
 
     try {
-        const response = await fetch('/api/delete', {
+        const response = await fetch('/delete', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             credentials: 'include',
@@ -167,7 +167,7 @@ async function deleteLink(code) {
 
 async function loadLinks() {
     try {
-        const response = await fetch('/api/links', {
+        const response = await fetch('/links', {
             credentials: 'include'
         });
         
