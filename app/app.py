@@ -25,7 +25,11 @@ def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
-            if request.is_json or request.path.startswith('/'):
+            # Return JSON for API endpoints (POST requests or requests with JSON Accept header)
+            # Page routes (GET without JSON Accept) get redirected
+            if (request.method == 'POST' or 
+                request.is_json or 
+                request.headers.get('Accept', '').startswith('application/json')):
                 return jsonify({"error": "Authentication required"}), 401
             return redirect(url_for('login'))
         return f(*args, **kwargs)
@@ -136,6 +140,7 @@ def login_api():
             "email": user['email']
         }
     }), 200
+
 
 @app.route("/logout", methods=["POST", "OPTIONS"])
 @login_required

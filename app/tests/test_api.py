@@ -44,7 +44,7 @@ class TestAPILayer(unittest.TestCase):
         mock_auth_service.create_user.return_value = mock_user
         
         response = self.app.post(
-            '/api/signup',
+            '/signup',
             data=json.dumps({
                 "email": "test@example.com",
                 "password": "password123"
@@ -63,7 +63,7 @@ class TestAPILayer(unittest.TestCase):
         mock_auth_service.email_exists.return_value = True
         
         response = self.app.post(
-            '/api/signup',
+            '/signup',
             data=json.dumps({
                 "email": "test@example.com",
                 "password": "password123"
@@ -80,7 +80,7 @@ class TestAPILayer(unittest.TestCase):
         """Test signup validation errors."""
         # Missing email
         response = self.app.post(
-            '/api/signup',
+            '/signup',
             data=json.dumps({
                 "password": "password123"
             }),
@@ -90,7 +90,7 @@ class TestAPILayer(unittest.TestCase):
         
         # Short password
         response = self.app.post(
-            '/api/signup',
+            '/signup',
             data=json.dumps({
                 "email": "test@example.com",
                 "password": "12345"
@@ -110,7 +110,7 @@ class TestAPILayer(unittest.TestCase):
         mock_auth_service.verify_user.return_value = mock_user
         
         response = self.app.post(
-            '/api/login',
+            '/login',
             data=json.dumps({
                 "email": "test@example.com",
                 "password": "password123"
@@ -128,7 +128,7 @@ class TestAPILayer(unittest.TestCase):
         mock_auth_service.verify_user.return_value = None
         
         response = self.app.post(
-            '/api/login',
+            '/login',
             data=json.dumps({
                 "email": "test@example.com",
                 "password": "wrongpassword"
@@ -144,7 +144,7 @@ class TestAPILayer(unittest.TestCase):
     def test_add_link_requires_authentication(self, mock_link_service):
         """Test adding link requires authentication."""
         response = self.app.post(
-            '/api/add',
+            '/add',
             data=json.dumps({
                 "url": "https://example.com"
             }),
@@ -169,7 +169,7 @@ class TestAPILayer(unittest.TestCase):
             sess['user_id'] = 'user123'
         
         response = self.app.post(
-            '/api/add',
+            '/add',
             data=json.dumps({
                 "url": "https://example.com",
                 "expires_in": "never"
@@ -192,7 +192,7 @@ class TestAPILayer(unittest.TestCase):
             sess['user_id'] = 'user123'
         
         response = self.app.post(
-            '/api/add',
+            '/add',
             data=json.dumps({
                 "url": "",
                 "expires_in": "never"
@@ -207,7 +207,7 @@ class TestAPILayer(unittest.TestCase):
     @patch('app.link_service')
     def test_get_links_requires_authentication(self, mock_link_service):
         """Test getting links requires authentication."""
-        response = self.app.get('/api/links')
+        response = self.app.get('/links', headers={'Accept': 'application/json'})
         
         self.assertEqual(response.status_code, 401)
     
@@ -228,7 +228,7 @@ class TestAPILayer(unittest.TestCase):
         with self.app.session_transaction() as sess:
             sess['user_id'] = 'user123'
         
-        response = self.app.get('/api/links')
+        response = self.app.get('/links')
         
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.data)

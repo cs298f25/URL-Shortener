@@ -46,6 +46,7 @@ echo "Deploying Flask service..."
 sudo cp "${PROJECT_ROOT}/${FLASK_SERVICE}" "${FLASK_SERVICE_PATH}"
 sudo systemctl daemon-reload
 sudo systemctl enable flask
+sudo systemctl restart redis6
 sudo systemctl restart flask
 
 # Show service status
