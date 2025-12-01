@@ -21,7 +21,6 @@ def _link_key(user_id: str, short_code: str) -> str:
     """Generate Redis key for a link hash."""
     return f"{LINK_KEY_PREFIX}{user_id}:{short_code}"
 
-
 def _user_links_key(user_id: str) -> str:
     """Generate Redis key for user's link set."""
     return f"{USER_LINKS_PREFIX}{user_id}:links"
@@ -30,7 +29,6 @@ def _user_links_key(user_id: str) -> str:
 def get_item(key: str) -> Optional[str]:
     """Return the string value stored at key, or None if it is missing."""
     return redis_client.get(key)
-
 
 def set_item(key: str, value: str) -> None:
     """Set key to value in Redis."""
@@ -48,10 +46,9 @@ def list_keys(pattern: str = "*") -> List[str]:
 
 
 def is_link_expired(link_data: Dict[str, str]) -> bool:
-    """Check if a link has expired based on expires_at field."""
     expires_at = link_data.get("expires_at", "")
     if not expires_at or expires_at == "":
-        return False  # Never expires
+        return False
     try:
         expires_timestamp = int(expires_at)
         return time.time() > expires_timestamp
@@ -62,24 +59,19 @@ def is_link_expired(link_data: Dict[str, str]) -> bool:
 def get_link(short_code: str) -> Optional[Dict[str, str]]:
     """
     Get link data by short_code, checking across all users.
-    Returns None if not found or expired.
-    Returns dict with url, created_at, expires_at, user_id if found and not expired.
     """
-    # Search for link across all users
     pattern = f"{LINK_KEY_PREFIX}*:{short_code}"
     keys = list_keys(pattern)
     
     if not keys:
         return None
     
-    # Get the first matching link (should be unique if short_code is unique)
     key = keys[0]
     link_data = redis_client.hgetall(key)
     
     if not link_data:
         return None
     
-    # Check if expired
     if is_link_expired(link_data):
         return None
     
@@ -102,7 +94,6 @@ def save_link(user_id: str, short_code: str, url: str, expires_at: Optional[int]
         "user_id": user_id
     })
     
-    # Add to user's link set
     user_links_key = _user_links_key(user_id)
     redis_client.sadd(user_links_key, short_code)
 
@@ -114,14 +105,11 @@ def remove_link(user_id: str, short_code: str) -> int:
     """
     link_key = _link_key(user_id, short_code)
     
-    # Check if link exists and is owned by this user
     if not redis_client.exists(link_key):
         return 0
     
-    # Delete the link hash
     deleted = redis_client.delete(link_key)
     
-    # Remove from user's link set
     user_links_key = _user_links_key(user_id)
     redis_client.srem(user_links_key, short_code)
     
@@ -129,14 +117,12 @@ def remove_link(user_id: str, short_code: str) -> int:
 
 
 def link_exists(short_code: str) -> bool:
-    """Check if a short_code exists across all users (and is not expired)."""
     pattern = f"{LINK_KEY_PREFIX}*:{short_code}"
     keys = list_keys(pattern)
     
     if not keys:
         return False
     
-    # Check if any matching link is not expired
     for key in keys:
         link_data = redis_client.hgetall(key)
         if link_data and not is_link_expired(link_data):
@@ -147,7 +133,6 @@ def link_exists(short_code: str) -> bool:
 
 def get_user_links(user_id: str) -> List[Dict[str, str]]:
     """
-    Get all links belonging to a user, including expired ones.
     Returns list of dicts with short_code, url, created_at, expires_at, is_expired.
     """
     user_links_key = _user_links_key(user_id)
@@ -180,7 +165,6 @@ def get_link_owner(short_code: str) -> Optional[str]:
     if not keys:
         return None
     
-    # Get the first matching link
     key = keys[0]
     link_data = redis_client.hgetall(key)
     
@@ -192,10 +176,7 @@ def get_link_owner(short_code: str) -> Optional[str]:
 
 def cleanup_expired_links() -> int:
     """
-    Optional background cleanup: remove expired links from user sets.
-    Returns number of expired links cleaned up.
     """
-    # This is a simple implementation - could be optimized for production
     pattern = f"{LINK_KEY_PREFIX}*"
     keys = list_keys(pattern)
     
@@ -205,8 +186,6 @@ def cleanup_expired_links() -> int:
         if link_data and is_link_expired(link_data):
             user_id = link_data.get("user_id")
             if user_id:
-                # Extract short_code from key
-                # Key format: link:{user_id}:{short_code}
                 parts = key.split(":")
                 if len(parts) >= 3:
                     short_code = ":".join(parts[2:])
@@ -246,18 +225,14 @@ def create_user(email: str, password: str) -> Optional[Dict[str, str]]:
     """
     email_lower = email.lower().strip()
     
-    # Check if email already exists
     email_key = _email_index_key(email_lower)
     if redis_client.exists(email_key):
         return None
     
-    # Generate user_id
     user_id = str(uuid.uuid4())
     
-    # Hash password
     password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
     
-    # Store user account
     created_at = int(time.time())
     account_key = _user_account_key(user_id)
     redis_client.hset(account_key, mapping={
@@ -285,21 +260,18 @@ def verify_user(email: str, password: str) -> Optional[Dict[str, str]]:
     """
     email_lower = email.lower().strip()
     
-    # Get user_id from email index
     email_key = _email_index_key(email_lower)
     user_id = redis_client.get(email_key)
     
     if not user_id:
         return None
     
-    # Get user account
     account_key = _user_account_key(user_id)
     user_data = redis_client.hgetall(account_key)
     
     if not user_data:
         return None
     
-    # Verify password
     stored_hash = user_data.get("password_hash", "")
     if not stored_hash:
         return None
@@ -313,7 +285,6 @@ def verify_user(email: str, password: str) -> Optional[Dict[str, str]]:
         "created_at": user_data.get("created_at")
     }
 
-
 def get_user_by_id(user_id: str) -> Optional[Dict[str, str]]:
     """Get user account by user_id. Returns None if not found."""
     account_key = _user_account_key(user_id)
@@ -322,10 +293,8 @@ def get_user_by_id(user_id: str) -> Optional[Dict[str, str]]:
     if not user_data:
         return None
     
-    # Don't return password hash
     user_data.pop("password_hash", None)
     return user_data
-
 
 def get_user_by_email(email: str) -> Optional[Dict[str, str]]:
     """Get user account by email. Returns None if not found."""

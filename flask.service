@@ -1,13 +1,18 @@
 [Unit]
 Description=URL Shortener Flask Application
-After=network-online.target redis.service
+After=network-online.target redis6.service
 Wants=network-online.target
+Requires=redis6.service
 
 [Service]
 User=root
 Group=root
 WorkingDirectory=/home/ec2-user/URL-Shortener/app
-ExecStart=/home/ec2-user/URL-Shortener/app/.venv/bin/gunicorn --bind 0.0.0.0:80 app:app
+ExecStart=/home/ec2-user/URL-Shortener/app/.venv/bin/gunicorn \
+    --certfile /etc/letsencrypt/live/aydelottecweb.moraviancs.click/fullchain.pem \
+    --keyfile /etc/letsencrypt/live/aydelottecweb.moraviancs.click/privkey.pem \
+    --bind 0.0.0.0:443 \
+    app:app
 Restart=always
 
 [Install]

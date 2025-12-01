@@ -115,13 +115,3 @@ app/
 ├── utils.py        # (Legacy - can be removed)
 └── ...
 ```
-
----
-
-## Migration Notes
-
-- Old `utils.py` is no longer used
-- All business logic moved to `services.py`
-- All database operations moved to `db.py`
-- `app.py` is now a thin HTTP layer
-
