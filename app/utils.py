@@ -313,7 +313,6 @@ def verify_user(email: str, password: str) -> Optional[Dict[str, str]]:
         "created_at": user_data.get("created_at")
     }
 
-
 def get_user_by_id(user_id: str) -> Optional[Dict[str, str]]:
     """Get user account by user_id. Returns None if not found."""
     account_key = _user_account_key(user_id)
@@ -325,7 +324,6 @@ def get_user_by_id(user_id: str) -> Optional[Dict[str, str]]:
     # Don't return password hash
     user_data.pop("password_hash", None)
     return user_data
-
 
 def get_user_by_email(email: str) -> Optional[Dict[str, str]]:
     """Get user account by email. Returns None if not found."""
