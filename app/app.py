@@ -1,6 +1,5 @@
 """
 API/Endpoint Layer - HTTP request/response handling.
-Thin layer that delegates to service layer for business logic.
 """
 from flask import Flask, request, jsonify, redirect, render_template, session, url_for
 from flask_cors import CORS
@@ -13,7 +12,6 @@ app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', 'your-secret-key-change-in-production')
 CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
 
-# Initialize service instances (can be replaced for testing)
 auth_service = AuthService()
 link_service = LinkService()
 
@@ -25,8 +23,6 @@ def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
-            # Return JSON for API endpoints (POST requests or requests with JSON Accept header)
-            # Page routes (GET without JSON Accept) get redirected
             if (request.method == 'POST' or 
                 request.is_json or 
                 request.headers.get('Accept', '').startswith('application/json')):
@@ -74,24 +70,20 @@ def signup():
     email = data.get("email", "").strip()
     password = data.get("password", "")
 
-    # Validation
     if not email or not password:
         return jsonify({"error": "Email and password are required"}), 400
 
     if len(password) < 6:
         return jsonify({"error": "Password must be at least 6 characters"}), 400
 
-    # Check if email already exists
     if auth_service.email_exists(email):
         return jsonify({"error": "Email already registered"}), 400
 
-    # Create user via service
     try:
         user = auth_service.create_user(email, password)
         if not user:
             return jsonify({"error": "Failed to create account"}), 500
 
-        # Set session
         session['user_id'] = user['user_id']
         session['email'] = user['email']
         session.permanent = True
@@ -118,16 +110,13 @@ def login_api():
     email = data.get("email", "").strip()
     password = data.get("password", "")
 
-    # Validation
     if not email or not password:
         return jsonify({"error": "Email and password are required"}), 400
 
-    # Verify credentials via service
     user = auth_service.verify_user(email, password)
     if not user:
         return jsonify({"error": "Invalid email or password"}), 401
 
-    # Set session
     session['user_id'] = user['user_id']
     session['email'] = user['email']
     session.permanent = True
@@ -188,7 +177,6 @@ def add_link():
     expires_in = data.get("expires_in", "never")
 
     try:
-        # Create link via service
         link = link_service.create_link(
             user_id=user_id,
             url=original_url,
@@ -219,20 +207,16 @@ def delete_link():
     data = request.get_json() or {}
     short_code = data.get("code", "").strip()
 
-    # Validation
     if not short_code:
         return jsonify({"error": "Short code is required"}), 400
 
-    # Check if link exists and get owner
     link_owner = link_service.get_link_owner(short_code)
     if not link_owner:
         return jsonify({"error": "Short code not found"}), 404
 
-    # Check if user owns the link
     if link_owner != user_id:
         return jsonify({"error": "Forbidden: You don't own this link"}), 403
 
-    # Delete via service
     try:
         deleted = link_service.delete_link(user_id, short_code)
         if not deleted:
@@ -252,7 +236,6 @@ def get_links():
     try:
         links = link_service.get_user_links(user_id)
         
-        # Format links for frontend
         formatted_links = []
         for link in links:
             formatted_links.append({
@@ -280,16 +263,13 @@ def redirect_short_code(short_code):
         link_data = link_service.get_link(short_code)
         
         if not link_data:
-            # Check if it exists but is expired
             link_owner = link_service.get_link_owner(short_code)
             if link_owner:
-                # Link exists but is expired
                 return jsonify({
                     "error": "This link has expired",
                     "message": "The shortened link you're trying to access is no longer available."
                 }), 410
             else:
-                # Link doesn't exist
                 return jsonify({"error": "Short code not found"}), 404
         
         original_url = link_data.get("url")

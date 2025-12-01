@@ -1,172 +1,152 @@
-# Testing Architecture
+# TESTING.md
 
 ## Overview
 
-The application now uses **dependency injection** to enable comprehensive testing of each layer. Services use instance methods instead of static methods, allowing database dependencies to be mocked for testing.
+This project uses a layered architecture with **dependency injection** so every layer (database, services, API) can be cleanly and independently tested using **pytest**.
 
-## Architecture Changes for Testability
+```
+tests/
+│── test_db.py
+│── test_services.py
+└── test_api.py
+```
 
-### Before (Static Methods - Hard to Test)
+Each layer is isolated using mocks or fake implementations.
+
+---
+
+# 1. Architecture Overview
+
+The system has three testable layers:
+
+## 1. Data Access Layer (`db.py`)
+- Wraps all Redis operations  
+- Tested by mocking the Redis client
+
+## 2. Service Layer (`services.py`)
+- Contains business logic for users and links  
+- Tested using a simple in-memory mock database
+
+## 3. API Layer (`app.py`)
+- Flask routes and HTTP behavior  
+- Tested with Flask’s test client and mocked services
+
+Services use **instance methods** and accept a database dependency:
+
 ```python
 class AuthService:
-    @staticmethod
-    def create_user(email: str, password: str):
-        # Hard-coded db access - can't be mocked
-        db.hash_set_mapping(...)
+    def __init__(self, database: DatabaseInterface):
+        self.db = database
 ```
 
-### After (Instance Methods with Dependency Injection - Testable)
-```python
-class AuthService:
-    def __init__(self, database: DatabaseInterface = None):
-        self.db = database if database is not None else db
-    
-    def create_user(self, email: str, password: str):
-        # Uses self.db - can be mocked!
-        self.db.hash_set_mapping(...)
-```
+This allows each layer to be tested in isolation.
 
-## Testing Each Layer
+---
 
-### 1. Data Access Layer (`db.py`)
+# 2. Running Tests
 
-**Test File:** `tests/test_db.py`
-
-**Strategy:** Mock the Redis client directly
-
-```python
-@patch('db.redis_client')
-def test_get(self, mock_redis):
-    mock_redis.get.return_value = "test_value"
-    result = db.get("test_key")
-    self.assertEqual(result, "test_value")
-```
-
-**Tests:** All Redis operations (get, set, hash operations, sets, etc.)
-
-### 2. Service Layer (`services.py`)
-
-**Test File:** `tests/test_services.py`
-
-**Strategy:** Use `MockDatabase` class that implements the database interface
-
-```python
-class MockDatabase:
-    """Mock database for testing services."""
-    def get(self, key: str): ...
-    def set_value(self, key: str, value: str): ...
-    # ... implements all database methods
-
-def setUp(self):
-    self.mock_db = MockDatabase()
-    self.auth_service = AuthService(database=self.mock_db)
-    
-def test_create_user_success(self):
-    user = self.auth_service.create_user("test@example.com", "password")
-    self.assertIsNotNone(user)
-```
-
-**Tests:**
-- Authentication business logic
-- Link management business logic
-- Validation rules
-- Helper functions
-
-### 3. API Layer (`app.py`)
-
-**Test File:** `tests/test_api.py`
-
-**Strategy:** Use Flask test client + mock services
-
-```python
-@patch('app.auth_service')
-def test_signup_success(self, mock_auth_service):
-    mock_auth_service.create_user.return_value = mock_user
-    response = self.app.post('/api/signup', ...)
-    self.assertEqual(response.status_code, 201)
-```
-
-**Tests:**
-- All HTTP endpoints
-- Request/response handling
-- Authentication decorators
-- Error responses
-
-## Running Tests
-
-### Install Dependencies
+## Install dependencies
 ```bash
-cd app
 pip install -r requirements.txt
 ```
 
-### Run All Tests
+## Run all tests
 ```bash
-python -m unittest discover tests
+pytest -q
 ```
 
-### Run Specific Layer Tests
+## Run individual test files
 ```bash
-# Test data access layer
-python -m unittest tests.test_db
-
-# Test service layer
-python -m unittest tests.test_services
-
-# Test API layer
-python -m unittest tests.test_api
+pytest tests/test_db.py
+pytest tests/test_services.py
+pytest tests/test_api.py
 ```
 
-### Run with Coverage
+## Run with coverage
 ```bash
-pip install pytest pytest-cov
-pytest tests/ --cov=. --cov-report=html
+pytest --cov=. --cov-report=html
 ```
 
-## Benefits
+---
 
-1. **Isolation**: Each layer can be tested independently
-2. **Speed**: Tests don't require actual Redis/database connections
-3. **Reliability**: Mocked dependencies ensure consistent test results
-4. **Maintainability**: Changes to one layer don't break tests for others
-5. **Dependency Injection**: Services can use real or mocked databases
+# 3. Test Strategy
 
-## Example Test Flow
+## 3.1 Data Access Layer — `test_db.py`
 
-```
-┌─────────────────────────────────────┐
-│ test_api.py                         │
-│  - Mocks: auth_service, link_service│
-│  - Tests: HTTP endpoints            │
-└──────────────┬──────────────────────┘
-               │
-               ▼
-┌─────────────────────────────────────┐
-│ test_services.py                    │
-│  - Mocks: MockDatabase              │
-│  - Tests: Business logic            │
-└──────────────┬──────────────────────┘
-               │
-               ▼
-┌─────────────────────────────────────┐
-│ test_db.py                          │
-│  - Mocks: redis_client              │
-│  - Tests: Database operations       │
-└─────────────────────────────────────┘
+**Goal:** Validate Redis wrapper functions without a real Redis instance.
+
+**Strategy:** Mock the Redis client:
+
+```python
+from unittest.mock import patch
+
+@patch("db.redis_client")
+def test_get(mock_redis):
+    mock_redis.get.return_value = "test_value"
+    assert db.get("key") == "test_value"
 ```
 
-## Key Design Decisions
+**What to test:** get, set_value, hash operations, sets, error handling
 
-1. **No Static Methods**: All services use instance methods for testability
-2. **Dependency Injection**: Services accept database as constructor parameter
-3. **Protocol Interface**: `DatabaseInterface` Protocol defines contract
-4. **Default Behavior**: If no database provided, uses real `db` module
-5. **Mock Database**: `MockDatabase` class simulates Redis for service tests
+## 3.2 Service Layer — `test_services.py`
 
-## Next Steps
+**Goal:** Test business logic independently of Redis.
 
-- Add integration tests that test all layers together
-- Add performance/load tests
-- Set up CI/CD pipeline to run tests automatically
+**Strategy:** Use an in-memory mock database:
+
+```python
+class MockDatabase:
+    def __init__(self):
+        self.data = {}
+
+    def get(self, key):
+        return self.data.get(key)
+
+    def set_value(self, key, value):
+        self.data[key] = value
+```
+
+Inject into services:
+
+```python
+mock_db = MockDatabase()
+auth = AuthService(database=mock_db)
+```
+
+**What to test:** user creation, login, link management, validation, error cases
+
+## 3.3 API Layer — `test_api.py`
+
+**Goal:** Verify all HTTP endpoints behave correctly.
+
+**Strategy:** Use Flask test client + mocked services:
+
+```python
+@patch("app.auth_service")
+def test_signup_success(mock_auth):
+    mock_auth.create_user.return_value = {"email": "test@example.com"}
+    res = client.post("/api/signup", json={"email": "...", "password": "..."})
+
+    assert res.status_code == 201
+```
+
+**What to test:** signup, login, link CRUD endpoints, authentication, validation, error responses
+
+---
+
+# 4. Benefits
+
+- **Isolation:** No tests require a real Redis or external service  
+- **Fast:** All tests run in-memory  
+- **Stable:** Tests are environment-independent  
+- **Maintainable:** Each layer is independently verifiable  
+- **Extensible:** Easy to swap real or mock implementations
+
+---
+
+# 5. Next Steps
+
+- Add integration tests using a real Redis (Docker)  
+- Add performance/load tests  
+- Set up CI/CD pipeline to run tests automatically  
 - Increase test coverage to >90%
-
